@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Lotto 추천번호 추출기</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 10px; }
+    h1 { color: #2c3e50; font-size: 1.4em; margin-bottom: 5px; }
+    p { font-size: 0.95em; margin-bottom: 15px; }
+    h3 { margin-bottom: 8px; font-size: 1.1em; }
+
+    button { 
+      width: 100%; 
+      padding: 14px; 
+      font-size: 1em; 
+      margin-top: 15px; 
+      background: #3498db; 
+      color: white; 
+      border: none; 
+      border-radius: 6px;
+    }
+
+    .section { margin-bottom: 20px; }
+    .result { margin-top: 15px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; }
+    .set { margin: 6px 0; }
+    .dup { color: #d35400; font-weight: bold; margin-top: 8px; }
+
+    /* 모바일 기본: 세로 정렬 */
+    .grid { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 12px; 
+    }
+    .grid label { font-size: 1em; }
+    .grid select { padding: 6px; font-size: 0.95em; }
+
+    /* 데스크톱 화면에서는 가로 정렬 */
+    @media (min-width: 700px) {
+      .grid { 
+        display: grid; 
+        grid-template-columns: 180px 150px; 
+        gap: 12px; 
+        align-items: center; 
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Lotto 추천번호 추출기</h1>
+  <p>원하는 통계분석 반영 기간을 선택해주세요.</p>
+
+  <!-- 기간 선택 -->
+  <div class="section">
+    <h3>기간 선택 & 홀짝비율</h3>
+    <div class="grid">
+      <label><input type="checkbox" id="period1y"> 최근1년</label>
+      <select id="ratio1y">
+        <option value="2:4">2:4</option>
+        <option value="3:3">3:3</option>
+        <option value="4:2">4:2</option>
+      </select>
+
+      <label><input type="checkbox" id="period3y"> 최근3년</label>
+      <select id="ratio3y">
+        <option value="2:4">2:4</option>
+        <option value="3:3">3:3</option>
+        <option value="4:2">4:2</option>
+      </select>
+
+      <label><input type="checkbox" id="period5y"> 최근5년</label>
+      <select id="ratio5y">
+        <option value="2:4">2:4</option>
+        <option value="3:3">3:3</option>
+        <option value="4:2">4:2</option>
+      </select>
+
+      <label><input type="checkbox" id="period10y"> 최근10년</label>
+      <select id="ratio10y">
+        <option value="2:4">2:4</option>
+        <option value="3:3">3:3</option>
+        <option value="4:2">4:2</option>
+      </select>
+
+      <label><input type="checkbox" id="periodAll"> 전체기간</label>
+      <select id="ratioAll">
+        <option value="2:4">2:4</option>
+        <option value="3:3">3:3</option>
+        <option value="4:2">4:2</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 버튼 -->
+  <button onclick="generateNumbers()">추천번호 추출하기</button>
+
+  <!-- 결과 -->
+  <div id="results"></div>
+
+<script>
+function generateNumbers() {
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
+
+  const conditions = {
+    "period1y": [
+      {min:129, max:139}, {min:128, max:140}, {min:126, max:143}, {min:123, max:146}, {exact:134}
+    ],
+    "period3y": [
+      {min:134, max:140}, {min:134, max:141}, {min:132, max:142}, {min:130, max:144}, {exact:137}
+    ],
+    "period5y": [
+      {min:136, max:140}, {min:135, max:140}, {min:134, max:142}, {min:132, max:143}, {exact:138}
+    ],
+    "period10y": [
+      {min:137, max:140}, {min:136, max:141}, {min:135, max:141}, {min:134, max:142}, {exact:139}
+    ],
+    "periodAll": [
+      {min:137, max:139}, {min:137, max:140}, {min:136, max:140}, {min:135, max:141}, {exact:138}
+    ]
+  };
+
+  const labels = ["CI 70%", "CI 80%", "CI 95%", "CI 99%", "Mean"];
+  const periodNames = {
+    "period1y": "최근1년",
+    "period3y": "최근3년",
+    "period5y": "최근5년",
+    "period10y": "최근10년",
+    "periodAll": "전체기간"
+  };
+
+  for (const period in conditions) {
+    if (document.getElementById(period).checked) {
+      const ratio = document.getElementById("ratio" + period.replace("period","")).value;
+      const section = document.createElement("div");
+      section.className = "result";
+      section.innerHTML = `<h3>${periodNames[period]}</h3>`;
+
+      let allNums = [];
+
+      conditions[period].forEach((cond, idx) => {
+        let nums = generateSet(ratio, cond);
+        allNums = allNums.concat(nums);
+        section.innerHTML += `<div class="set"><b>${labels[idx]}:</b> ${nums.join(", ")}</div>`;
+      });
+
+      const freq = {};
+      allNums.forEach(n => { freq[n] = (freq[n]||0)+1; });
+      const dupNums = Object.entries(freq)
+        .filter(([num,count]) => count >= 2)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([num,count]) => `${num}(${count}회)`);
+
+      if (dupNums.length > 0) {
+        section.innerHTML += `<p class="dup">추천번호 내 중복 숫자: ${dupNums.join(", ")}</p>`;
+      }
+
+      resultsDiv.appendChild(section);
+    }
+  }
+}
+
+function generateSet(ratio, cond) {
+  const [oddCount, evenCount] = ratio.split(":").map(Number);
+  let set = [];
+
+  while (true) {
+    set = [];
+    while (set.filter(n => n % 2 === 1).length < oddCount) {
+      let num = Math.floor(Math.random() * 45) + 1;
+      if (num % 2 === 1) set.push(num);
+    }
+    while (set.filter(n => n % 2 === 0).length < evenCount) {
+      let num = Math.floor(Math.random() * 45) + 1;
+      if (num % 2 === 0) set.push(num);
+    }
+    set = [...new Set(set)];
+    while (set.length < 6) {
+      let num = Math.floor(Math.random() * 45) + 1;
+      set.push(num);
+      set = [...new Set(set)];
+    }
+    set.sort((a,b)=>a-b);
+
+    const sum = set.reduce((a,b)=>a+b,0);
+    if (cond.exact !== undefined && sum === cond.exact) return set;
+    if (cond.min !== undefined && sum >= cond.min && sum <= cond.max) return set;
+  }
+}
+</script>
+</body>
+</html>
